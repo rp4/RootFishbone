@@ -1,0 +1,7 @@
+{
+  "name": "Root Cause Fishbone",
+  "description": "Root Cause Analysis using Fishbone (Ishikawa) and 5 Whys",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
