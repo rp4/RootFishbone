@@ -115,10 +115,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isTyping, onSen
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-t border-slate-200 shadow-2xl shadow-slate-400/10">
+    <div className="flex flex-col h-full bg-white">
       
       {/* Header */}
-      <div className="h-10 border-b border-slate-100 flex items-center px-4 bg-slate-50 justify-between">
+      <div className="h-12 border-b border-slate-100 flex items-center px-4 bg-slate-50 justify-between shrink-0">
         <div className="flex items-center">
           <Sparkles className="w-4 h-4 text-blue-500 mr-2" />
           <span className="text-xs font-semibold text-slate-600">RCA Assistant</span>

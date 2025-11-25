@@ -1,7 +1,6 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Fish } from 'lucide-react';
 import BowTieGraph from './components/BowTieGraph';
 import ChatInterface from './components/ChatInterface';
 import { INITIAL_REACTFLOW_NODES, INITIAL_REACTFLOW_EDGES } from './constants';
@@ -16,6 +15,7 @@ import {
   Connection, 
   MarkerType 
 } from 'reactflow';
+import { GripVertical } from 'lucide-react';
 
 const App: React.FC = () => {
   // State for React Flow
@@ -34,8 +34,50 @@ const App: React.FC = () => {
   ]);
   const [isTyping, setIsTyping] = useState(false);
 
+  // State for Sidebar Resizing
+  const [sidebarWidth, setSidebarWidth] = useState(450);
+  const [isResizing, setIsResizing] = useState(false);
+
   // File Input Ref for Import (Project Level)
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Resizing Logic ---
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      // Calculate new width relative to the right edge of the window
+      const newWidth = window.innerWidth - e.clientX;
+      
+      // Enforce min and max constraints
+      if (newWidth >= 300 && newWidth <= 800) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize'; // Force cursor during drag
+    } else {
+      document.body.style.cursor = '';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+    };
+  }, [isResizing]);
 
   // --- Graph Manipulation Handlers ---
 
@@ -497,8 +539,12 @@ const App: React.FC = () => {
       <header className="h-auto bg-white border-b border-slate-200 flex flex-col shrink-0 z-30 shadow-sm">
         <div className="h-16 flex items-center px-8 justify-between">
            <div className="flex items-center gap-3">
-             <div className="w-9 h-9 bg-slate-900 rounded-lg flex items-center justify-center shadow-lg shadow-slate-400/20">
-               <Fish className="w-5 h-5 text-white" />
+             <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
+               <img 
+                 src="https://storage.googleapis.com/toolbox-478717-storage/branding/worker.png" 
+                 alt="RCA Logo" 
+                 className="w-full h-full object-contain"
+               />
              </div>
              <div>
                 <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">Root Cause Fishbone</h1>
@@ -540,32 +586,52 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* MAIN CONTENT: Graph */}
-      <main className="flex-1 relative overflow-hidden bg-slate-100">
-        <BowTieGraph 
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={handleConnect}
-          onAddNode={(type) => handleAddNode(type)} 
-          onUpdateNode={(id, title, description) => handleUpdateNode(id, { title, description })}
-          onDeleteNode={handleDeleteNode}
-          onUpdateEdge={handleUpdateEdge}
-          onDeleteEdge={handleDeleteEdge}
-        />
-      </main>
+      {/* BODY CONTENT: ROW LAYOUT */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* MAIN CONTENT: Graph */}
+        <main className="flex-1 relative bg-slate-100 min-w-0">
+          <BowTieGraph 
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={handleConnect}
+            onAddNode={(type) => handleAddNode(type)} 
+            onUpdateNode={(id, title, description) => handleUpdateNode(id, { title, description })}
+            onDeleteNode={handleDeleteNode}
+            onUpdateEdge={handleUpdateEdge}
+            onDeleteEdge={handleDeleteEdge}
+          />
+        </main>
 
-      {/* BOTTOM: Chat */}
-      <section className="h-[40vh] shrink-0 z-40 relative border-t border-slate-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
-        <ChatInterface 
-          messages={messages} 
-          isTyping={isTyping} 
-          onSendMessage={handleSendMessage}
-          onSuggestionClick={(text) => handleSendMessage(text)}
-          onClearChat={handleClearChat}
-        />
-      </section>
+        {/* DRAG HANDLE */}
+        <div 
+          onMouseDown={startResizing}
+          className={`
+            w-1 hover:w-2 transition-all duration-150 ease-out cursor-col-resize z-50 flex items-center justify-center group shrink-0
+            ${isResizing ? 'bg-blue-500 w-2 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-slate-200 hover:bg-blue-400'}
+          `}
+        >
+          {/* Optional: Visual grip dots that appear on hover */}
+          <div className={`h-8 w-0.5 bg-white/50 rounded opacity-0 group-hover:opacity-100 ${isResizing ? 'opacity-100' : ''}`} />
+        </div>
+
+        {/* RIGHT SIDEBAR: Chat */}
+        <section 
+          style={{ width: sidebarWidth }}
+          className="shrink-0 z-40 relative bg-white shadow-[-4px_0_20px_-5px_rgba(0,0,0,0.05)] flex flex-col"
+        >
+          <ChatInterface 
+            messages={messages} 
+            isTyping={isTyping} 
+            onSendMessage={handleSendMessage}
+            onSuggestionClick={(text) => handleSendMessage(text)}
+            onClearChat={handleClearChat}
+          />
+        </section>
+
+      </div>
 
     </div>
   );
