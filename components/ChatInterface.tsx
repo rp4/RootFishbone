@@ -1,9 +1,8 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Send, Sparkles, RotateCcw, Paperclip, FileText, X, Mic, MicOff, Loader } from 'lucide-react';
+import { Send, Sparkles, RotateCcw, Paperclip, FileText, X } from 'lucide-react';
 import { ChatMessage, MessageRole, ContentType } from '../types';
 import { SUGGESTION_CHIPS } from '../constants';
-import { transcribeAudio } from '../services/geminiService';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -17,12 +16,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isTyping, onSen
   const [input, setInput] = React.useState('');
   const [file, setFile] = useState<{name: string, content: string} | null>(null);
   
-  // Recording State
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,67 +43,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isTyping, onSen
         setFile({ name: selectedFile.name, content });
       };
       reader.readAsText(selectedFile);
-    }
-  };
-
-  const toggleListening = async () => {
-    if (isTranscribing) return;
-
-    if (isRecording) {
-      // Stop Recording
-      mediaRecorderRef.current?.stop();
-      setIsRecording(false);
-    } else {
-      // Start Recording
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        let mimeType = 'audio/webm';
-        if (MediaRecorder.isTypeSupported('audio/webm')) {
-          mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-           mimeType = 'audio/mp4';
-        }
-
-        const mediaRecorder = new MediaRecorder(stream, { mimeType });
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-             const base64String = (reader.result as string).split(',')[1];
-             setIsTranscribing(true);
-             try {
-               const text = await transcribeAudio(base64String, mimeType);
-               if (text) {
-                 setInput(prev => (prev ? prev + ' ' : '') + text);
-               }
-             } catch (error) {
-               console.error("Transcription error", error);
-               alert("Failed to transcribe audio. Check console for details.");
-             } finally {
-               setIsTranscribing(false);
-               // Cleanup tracks
-               stream.getTracks().forEach(track => track.stop());
-             }
-          };
-        };
-
-        mediaRecorder.start();
-        setIsRecording(true);
-      } catch (err) {
-        console.error("Error accessing microphone:", err);
-        alert("Could not access microphone. Please ensure permissions are granted.");
-      }
     }
   };
 
@@ -212,12 +144,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isTyping, onSen
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isRecording ? "Listening... click mic to stop" : (isTranscribing ? "Transcribing..." : "Type or narrate...")}
-              disabled={isRecording || isTranscribing}
-              className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-32 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400`}
+              placeholder="Type a message..."
+              className={`w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-24 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:bg-slate-50 disabled:text-slate-400`}
             />
             
-            {/* Input Actions: Attach, Mic & Send */}
+            {/* Input Actions: Attach & Send */}
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
               <button 
                 type="button"
@@ -228,23 +159,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, isTyping, onSen
                 <Paperclip className="w-4 h-4" />
               </button>
 
-              <button
-                type="button"
-                onClick={toggleListening}
-                disabled={isTranscribing}
-                className={`p-2 rounded-lg transition-colors ${
-                  isRecording 
-                    ? 'bg-red-100 text-red-600 animate-pulse ring-2 ring-red-200' 
-                    : (isTranscribing ? 'bg-slate-100 text-blue-500' : 'hover:bg-slate-200 text-slate-500')
-                }`}
-                title={isRecording ? "Stop Recording" : "Narrate"}
-              >
-                {isTranscribing ? <Loader className="w-4 h-4 animate-spin" /> : (isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />)}
-              </button>
-
               <button 
                 type="submit"
-                disabled={(!input.trim() && !file) || isTyping || isRecording || isTranscribing}
+                disabled={(!input.trim() && !file) || isTyping}
                 className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
               >
                 <Send className="w-4 h-4" />

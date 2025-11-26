@@ -102,34 +102,6 @@ export interface GeminiResponse {
   }[];
 }
 
-export const transcribeAudio = async (base64Audio: string, mimeType: string): Promise<string> => {
-  if (!ai) return "";
-  
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-             { text: "Transcribe the speech in this audio clip exactly as spoken. Return only the plain text of the transcription." },
-             {
-               inlineData: {
-                 mimeType: mimeType,
-                 data: base64Audio
-               }
-             }
-          ]
-        }
-      ]
-    });
-    return response.text?.trim() || "";
-  } catch (error) {
-    console.error("Transcription error:", error);
-    return "";
-  }
-};
-
 export const generateProcessResponse = async (
   history: { role: string; parts: { text: string }[] }[],
   currentMessage: string,
